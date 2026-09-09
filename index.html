@@ -134,7 +134,10 @@
       <div class="stat"><small>📦 Zum Verkauf</small><div id="myStock" class="stat-number">–</div>
         <div id="myStockHint" class="hinweis" style="margin-top:4px"></div></div>
       <div class="stat"><small>🥤 Lagerbestand gesamt</small><div id="totalStock" class="stat-number">–</div></div>
-      <div class="stat"><small>💰 Einnahmen</small><div id="totalIncome" class="stat-number">–</div></div>
+      <div class="stat"><small>💰 Deine Einnahmen</small><div id="totalIncome" class="stat-number">–</div>
+        <div class="hinweis" style="margin-top:4px">aus deinen Verkäufen</div></div>
+      <div class="stat"><small>💸 Deine Ausgaben</small><div id="mySpend" class="stat-number">–</div>
+        <div class="hinweis" style="margin-top:4px">was du gekauft hast</div></div>
       <div class="stat"><small>📒 Offene Schulden</small><div id="totalDebt" class="stat-number">–</div></div>
       <div class="stat"><small>🧾 Deine Schuld</small><div id="myDebt" class="stat-number">–</div>
         <div id="myDebtHint" class="hinweis" style="margin-top:4px"></div></div>
@@ -1174,10 +1177,22 @@ async function rolleWechseln(userId){
 function updateStats(){
   const bestand = drinks.reduce((s, d) => s + Number(d.stock || 0), 0);
 
-  const sofortBezahlt = sales
-    .filter(s => !s.storniert && s.status !== "offen" && s.status !== "abgelehnt" && s.payment !== "debt")
-    .reduce((s, v) => s + Number(v.betrag ?? (Number(v.price || 0) * Number(v.menge || 1))), 0);
-  const schuldenBezahlt = payments.reduce((s, p) => s + Number(p.amount || 0), 0);
+  const gueltig = v => !v.storniert && v.status !== "offen" && v.status !== "abgelehnt";
+  const summeVon = liste => liste.reduce((s, v) =>
+    s + Number(v.betrag ?? (Number(v.price || 0) * Number(v.menge || 1))), 0);
+
+  // Einnahmen: nur was über die eigenen Produkte reinkam (Admin sieht alles)
+  const sofortBezahlt = summeVon(sales.filter(v =>
+    gueltig(v) && (istAdmin() || v.verkaeufer === meineUid) &&
+    (v.payment === "twint" || v.payment === "cash")));
+  const schuldenBezahlt = istAdmin()
+    ? payments.reduce((s, p) => s + Number(p.amount || 0), 0)
+    : 0;
+
+  // Ausgaben: alles, was man selbst gekauft hat
+  const ausgaben = summeVon(sales.filter(v =>
+    gueltig(v) && v.userId === meineUid &&
+    (v.payment === "twint" || v.payment === "cash" || v.payment === "debt")));
 
   const schulden = users.reduce((s, u) => s + Number(u.debt || 0), 0);
 
@@ -1190,6 +1205,7 @@ function updateStats(){
 
   $("totalStock").textContent = bestand;
   $("totalIncome").textContent = chf(sofortBezahlt + schuldenBezahlt);
+  $("mySpend").textContent = "− " + chf(ausgaben);
   $("totalDebt").textContent = chf(schulden);
   if(ich) $("userEmail").textContent = (ich.name || ich.email) + " · " + (ich.email || "");
   $("myDebt").textContent = chf(ich ? ich.debt : 0);
