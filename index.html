@@ -1,0 +1,1088 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Getränke Vorrat</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;font-family:system-ui,-apple-system,"Segoe UI",Arial,sans-serif}
+  body{background:#0f1115;color:#fff;min-height:100vh;line-height:1.45}
+  header{background:#181b21;border-bottom:1px solid #30343d;padding:14px 18px;display:flex;
+    justify-content:space-between;align-items:center;gap:12px;position:sticky;top:0;z-index:20;flex-wrap:wrap}
+  header h1{font-size:20px}
+  .container{max-width:1100px;margin:auto;padding:20px}
+  .nav{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:24px}
+  button{border:none;border-radius:10px;padding:11px 16px;color:#fff;background:#292e38;cursor:pointer;
+    font-weight:600;font-size:15px;font-family:inherit}
+  button:hover{filter:brightness(1.15)}
+  button:disabled{opacity:.45;cursor:not-allowed;filter:none}
+  button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid #60a5fa;outline-offset:2px}
+  .primary{background:#2563eb}
+  .success{background:#16a34a}
+  .danger{background:#dc2626}
+  .ghost{background:transparent;border:1px solid #3b414c;color:#cbd5e1;padding:8px 12px;font-size:14px}
+  .nav button.active{background:#2563eb}
+  .page{display:none}
+  .page.active{display:block}
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:15px}
+  .card{background:#181b21;border:1px solid #30343d;border-radius:15px;padding:20px}
+  .drink-card{display:flex;flex-direction:column;gap:10px}
+  .drink-icon{font-size:42px;line-height:1}
+  .drink-name{font-size:19px;font-weight:700}
+  .price{color:#60a5fa;font-size:17px;font-weight:700}
+  .stock{color:#9aa4b2;font-size:14px}
+  .low{color:#f59e0b}
+  .empty{color:#ef4444}
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:15px;margin-bottom:24px}
+  .stat{background:#181b21;border:1px solid #30343d;border-radius:15px;padding:18px}
+  .stat small{color:#9aa4b2;font-size:13.5px}
+  .stat-number{font-size:27px;font-weight:700;margin-top:6px}
+  input,select{width:100%;padding:11px;background:#101217;color:#fff;border:1px solid #3b414c;
+    border-radius:8px;margin-top:6px;margin-bottom:14px;font-size:16px;font-family:inherit}
+  label{color:#9aa4b2;font-size:14px}
+  .form{background:#181b21;border:1px solid #30343d;border-radius:15px;padding:20px;max-width:520px}
+  .row{display:flex;justify-content:space-between;align-items:center;gap:14px;padding:14px 0;border-bottom:1px solid #30343d}
+  .row:last-child{border-bottom:none}
+  .red{color:#ef4444}.green{color:#22c55e}.blue{color:#60a5fa}.muted{color:#9aa4b2}
+  .badge{display:inline-block;background:#292e38;color:#cbd5e1;border-radius:99px;padding:2px 9px;font-size:12px;margin-left:6px}
+  .badge.admin{background:#1e3a8a;color:#bfdbfe}
+  .modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);justify-content:center;
+    align-items:center;z-index:100;padding:20px}
+  .modal.active{display:flex}
+  .modal-box{background:#181b21;border:1px solid #3b414c;border-radius:15px;padding:24px;width:100%;max-width:440px;
+    max-height:90vh;overflow:auto}
+  .modal-buttons{display:flex;gap:10px;flex-wrap:wrap}
+  table{width:100%;border-collapse:collapse}
+  th,td{padding:11px;text-align:left;border-bottom:1px solid #30343d;font-size:14.5px}
+  th{color:#9aa4b2;font-weight:600}
+  tr.storniert td{color:#6b7280;text-decoration:line-through}
+  .login{max-width:430px;margin:8vh auto;padding:0 16px}
+  .hidden{display:none !important}
+  .user-info{color:#9aa4b2;font-size:14px;margin-right:10px}
+  .hinweis{color:#9aa4b2;font-size:13.5px;margin-top:10px}
+  .sperre{background:#3b1220;border:1px solid #dc2626;border-radius:12px;padding:14px 16px;
+    margin-bottom:20px;color:#fecaca}
+  .warn{background:#3a2a10;border:1px solid #a16207;border-radius:12px;padding:14px 16px;margin-bottom:20px;color:#fde68a}
+  .toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:#fff;color:#0f1115;font-weight:600;
+    padding:12px 18px;border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.5);opacity:0;pointer-events:none;
+    transition:opacity .2s;z-index:200;max-width:92vw;text-align:center}
+  .toast.an{opacity:1}
+  .toast.fehler{background:#fee2e2;color:#7f1d1d}
+  .lade{color:#9aa4b2;padding:20px 0}
+  @media(max-width:600px){
+    header h1{font-size:17px}
+    .container{padding:14px}
+    th,td{padding:8px;font-size:13px}
+    .nav button{flex:1 1 45%}
+  }
+  @media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<!-- ANMELDEN -->
+<div id="loginPage" class="login">
+  <div class="card">
+    <h1>🥤 Getränke Vorrat</h1>
+    <p class="muted" style="margin:10px 0 18px">Bitte anmelden</p>
+
+    <label for="displayName">Dein Name (nur beim Konto erstellen nötig)</label>
+    <input id="displayName" placeholder="z.B. Cillian" autocomplete="off">
+
+    <label for="email">E-Mail</label>
+    <input id="email" type="email" placeholder="name@example.com" autocomplete="email">
+
+    <label for="password">Passwort</label>
+    <input id="password" type="password" placeholder="mindestens 6 Zeichen" autocomplete="current-password">
+
+    <button class="primary" data-tun="login" style="width:100%">🔐 Anmelden</button>
+    <button data-tun="registrieren" style="width:100%;margin-top:8px">👤 Konto erstellen</button>
+    <button class="ghost" data-tun="passwortVergessen" style="width:100%;margin-top:8px">Passwort vergessen</button>
+
+    <p id="loginMessage" class="hinweis"></p>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app" class="hidden">
+<header>
+  <h1>🥤 Getränke Vorrat</h1>
+  <div>
+    <span id="userEmail" class="user-info"></span>
+    <button class="ghost" data-tun="nameAendern">Name ändern</button>
+    <button class="ghost" data-tun="logout">Abmelden</button>
+  </div>
+</header>
+
+<div class="container">
+  <div class="nav">
+    <button data-seite="home">🏠 Start</button>
+    <button data-seite="drinks">🛒 Sortiment</button>
+    <button data-seite="debts">📒 Schulden</button>
+    <button data-seite="history">📊 Verkäufe</button>
+    <button data-seite="admin" id="navAdmin" hidden>⚙️ Verwaltung</button>
+  </div>
+
+  <!-- START -->
+  <section id="home" class="page active">
+    <div id="sperrBanner"></div>
+    <div id="nachfuellen"></div>
+
+    <div class="stats">
+      <div class="stat"><small>🥤 Lagerbestand</small><div id="totalStock" class="stat-number">–</div></div>
+      <div class="stat"><small>💰 Einnahmen</small><div id="totalIncome" class="stat-number">–</div></div>
+      <div class="stat"><small>📒 Offene Schulden</small><div id="totalDebt" class="stat-number">–</div></div>
+      <div class="stat"><small>🧾 Deine Schuld</small><div id="myDebt" class="stat-number">–</div>
+        <div id="myDebtHint" class="hinweis" style="margin-top:4px"></div></div>
+    </div>
+
+    <h2 style="margin-bottom:12px">Sortiment</h2>
+    <div id="homeDrinks" class="cards"><p class="lade">Lade…</p></div>
+  </section>
+
+  <!-- GETRÄNKE -->
+  <section id="drinks" class="page">
+    <h2 style="margin-bottom:12px">🛒 Sortiment</h2>
+    <div class="nav">
+      <button data-kat="alle" id="katAlle">Alles</button>
+      <button data-kat="drink" id="katDrink">🥤 Getränke</button>
+      <button data-kat="food" id="katFood">🍫 Essen</button>
+    </div>
+    <div class="form" style="margin-bottom:22px">
+      <h3 style="margin-bottom:8px">➕ Artikel hinzufügen</h3>
+      <p class="muted" style="font-size:14px;margin-bottom:12px">
+        Jeder darf etwas anbieten. Ändern kannst nur du, was du selbst eingetragen hast.
+      </p>
+      <label for="newDrinkKat">Art</label>
+      <select id="newDrinkKat">
+        <option value="drink">🥤 Getränk</option>
+        <option value="food">🍫 Essen</option>
+      </select>
+      <label for="newDrinkName">Name</label>
+      <input id="newDrinkName" placeholder="Coca-Cola">
+      <label for="newDrinkIcon">Emoji</label>
+      <input id="newDrinkIcon" placeholder="🥤">
+      <label for="newDrinkPrice">Preis (CHF)</label>
+      <input id="newDrinkPrice" type="number" step="0.05" min="0" placeholder="1.50">
+      <label for="newDrinkStock">Bestand</label>
+      <input id="newDrinkStock" type="number" min="0" placeholder="20">
+      <label for="newDrinkMin">Mindestbestand</label>
+      <input id="newDrinkMin" type="number" min="0" placeholder="5">
+      <button class="primary" data-tun="getraenkAnlegen">Artikel hinzufügen</button>
+    </div>
+    <div id="drinkList" class="cards"><p class="lade">Lade…</p></div>
+  </section>
+
+  <!-- SCHULDEN -->
+  <section id="debts" class="page">
+    <h2 style="margin-bottom:12px">📒 Schulden</h2>
+    <div id="debtList" class="card"><p class="lade">Lade…</p></div>
+  </section>
+
+  <!-- VERKÄUFE -->
+  <section id="history" class="page">
+    <h2 style="margin-bottom:12px">📊 Verkäufe</h2>
+    <div id="offeneListe"></div>
+    <div class="nav">
+      <button data-filter="alle" id="filterAlle">Alle</button>
+      <button data-filter="meine" id="filterMeine">Nur meine</button>
+    </div>
+    <div class="card">
+      <table>
+        <thead>
+          <tr><th>Datum</th><th>Person</th><th>Getränk</th><th>Betrag</th><th>Zahlung</th><th></th></tr>
+        </thead>
+        <tbody id="historyTable"></tbody>
+      </table>
+    </div>
+    <p class="hinweis">Du siehst deine eigenen Käufe und die Verkäufe deiner Produkte.</p>
+  </section>
+
+  <!-- VERWALTUNG -->
+  <section id="admin" class="page">
+    <h2 style="margin-bottom:12px">⚙️ Verwaltung</h2>
+
+    <div class="card" style="margin-top:18px">
+      <h3 style="margin-bottom:8px">👥 Benutzer</h3>
+      <p class="muted" style="font-size:14px;margin-bottom:8px">
+        Ein Admin darf Getränke verwalten, Schulden verbuchen und stornieren.
+      </p>
+      <div id="userList"></div>
+    </div>
+  </section>
+</div>
+</div>
+
+<!-- KAUF -->
+<div id="purchaseModal" class="modal">
+  <div class="modal-box">
+    <h2 id="modalDrinkName"></h2>
+    <p id="modalDrinkPrice" class="muted" style="margin:8px 0 16px"></p>
+
+    <label for="purchaseAmount">Anzahl</label>
+    <input id="purchaseAmount" type="number" min="1" step="1" value="1">
+
+    <p id="purchaseUserHint" class="hinweis" style="margin:0 0 14px"></p>
+
+    <div id="giftBox" hidden>
+      <label for="giftUser">Wem schenkst du es?</label>
+      <select id="giftUser"></select>
+    </div>
+
+    <div id="paymentBox">
+    <label for="paymentMethod">Zahlungsart</label>
+    <select id="paymentMethod">
+      <option value="twint">💚 Twint</option>
+      <option value="cash">💵 Bar</option>
+      <option value="debt">📒 Schuld (später zahlen)</option>
+    </select>
+    </div>
+
+    <p id="modalTotal" class="blue" style="font-weight:700;margin-bottom:6px"></p>
+    <p id="modalHinweis" class="hinweis" style="margin-bottom:16px"></p>
+
+    <div class="modal-buttons">
+      <button class="success" data-tun="kaufBestaetigen">✅ Bestätigen</button>
+      <button class="ghost" data-tun="modalZu">Abbrechen</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-app.js";
+import {
+  getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
+  signOut, onAuthStateChanged, sendPasswordResetEmail
+} from "https://www.gstatic.com/firebasejs/12.18.0/firebase-auth.js";
+import {
+  getFirestore, collection, addDoc, doc, setDoc, updateDoc, deleteDoc,
+  query, where, orderBy, limit, onSnapshot, serverTimestamp, runTransaction
+} from "https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore.js";
+
+/* ====== DEINE FIREBASE CONFIG ====== */
+const firebaseConfig = {
+  apiKey: "AIzaSyAZ6KAXaX1_PGvtHtYcflPttJ-6KxJmCbI",
+  authDomain: "cillians-bbc-versorgung.firebaseapp.com",
+  projectId: "cillians-bbc-versorgung",
+  storageBucket: "cillians-bbc-versorgung.firebasestorage.app",
+  messagingSenderId: "23059121722",
+  appId: "1:23059121722:web:ebcc528c33ad3dbcec9703"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+/* ====== Zustand ====== */
+let drinks = [], users = [], sales = [], payments = [];
+let katFilter = "alle";
+let meineKaeufe = [], meineVerkaeufe = [];
+let geschenkModus = false;
+let gewuenschterName = "";
+
+// Eigene Käufe und eigene Verkäufe zusammenlegen, ohne Doppelte
+function verkaeufeMischen(){
+  const map = new Map();
+  meineKaeufe.concat(meineVerkaeufe).forEach(v => map.set(v.id, v));
+  sales = [...map.values()].sort((a, b) => {
+    const az = a.createdAt && a.createdAt.toMillis ? a.createdAt.toMillis() : 0;
+    const bz = b.createdAt && b.createdAt.toMillis ? b.createdAt.toMillis() : 0;
+    return bz - az;
+  });
+  renderAll();
+}
+let ich = null;              // Firestore-Dokument des angemeldeten Benutzers
+let meineUid = null;
+let gewaehltesGetraenk = null;
+let historyFilter = "alle";
+let listener = [];           // aktive onSnapshot-Abmelder
+
+const $ = id => document.getElementById(id);
+const chf = n => "CHF " + Number(n || 0).toFixed(2);
+const esc = v => String(v ?? "").replace(/[&<>"']/g, c =>
+  ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;" }[c]));
+const istAdmin = () => !!ich && ich.role === "admin";
+const kat = p => (p && p.kategorie === "food") ? "food" : "drink";
+const katName = k => k === "food" ? "Essen" : "Getränk";
+const runde = n => Math.round(Number(n) * 100) / 100;
+
+const FRIST_TAGE = 2;
+const FRIST_MS = FRIST_TAGE * 24 * 60 * 60 * 1000;
+
+const hatSchuld = u => Number((u && u.debt) || 0) > 0.001;
+function faelligIn(u){                       // Millisekunden bis zur Frist, negativ = überfällig
+  if(!hatSchuld(u) || !Number(u.debtSince || 0)) return null;
+  return Number(u.debtSince) + FRIST_MS - Date.now();
+}
+const gesperrt = u => { const r = faelligIn(u); return r !== null && r <= 0; };
+function fristText(u){
+  const r = faelligIn(u);
+  if(r === null) return "";
+  if(r <= 0) return "seit " + dauerText(-r) + " überfällig";
+  return "zahlbar in " + dauerText(r);
+}
+function dauerText(ms){
+  const stunden = Math.floor(ms / 3600000);
+  if(stunden >= 24) return Math.floor(stunden / 24) + " Tag" + (Math.floor(stunden / 24) === 1 ? "" : "en") +
+    " " + (stunden % 24) + " Std";
+  if(stunden >= 1) return stunden + " Std";
+  return Math.max(1, Math.floor(ms / 60000)) + " Min";
+}
+
+
+/* ====== Meldungen ====== */
+let toastTimer = null;
+function melde(text, fehler){
+  const t = $("toast");
+  t.textContent = text;
+  t.classList.toggle("fehler", !!fehler);
+  t.classList.add("an");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove("an"), 3200);
+}
+
+const fehlerTexte = {
+  "auth/invalid-email": "Die E-Mail sieht nicht richtig aus.",
+  "auth/missing-password": "Gib ein Passwort ein.",
+  "auth/weak-password": "Das Passwort braucht mindestens 6 Zeichen.",
+  "auth/email-already-in-use": "Für diese E-Mail gibt es schon ein Konto. Melde dich einfach an.",
+  "auth/invalid-credential": "E-Mail oder Passwort stimmt nicht.",
+  "auth/user-not-found": "Für diese E-Mail gibt es noch kein Konto.",
+  "auth/wrong-password": "Das Passwort stimmt nicht.",
+  "auth/too-many-requests": "Zu viele Versuche. Warte ein paar Minuten.",
+  "auth/network-request-failed": "Keine Verbindung zum Server.",
+  "auth/operation-not-allowed": "In Firebase ist die Anmeldung mit E-Mail/Passwort noch nicht eingeschaltet.",
+  "auth/invalid-api-key": "Die Firebase-Config in der Datei stimmt nicht.",
+  "permission-denied": "Die Datenbank-Regeln erlauben das nicht.",
+  "unavailable": "Keine Verbindung zur Datenbank."
+};
+const lesbar = e => fehlerTexte[e && e.code] || (e && e.message) || "Unbekannter Fehler";
+
+/* ====== Anmeldung ====== */
+onAuthStateChanged(auth, async user => {
+  listener.forEach(ab => ab());
+  listener = [];
+
+  if(!user){
+    meineUid = null; ich = null;
+    drinks = []; users = []; sales = []; payments = [];
+    meineKaeufe = []; meineVerkaeufe = [];
+    $("loginPage").classList.remove("hidden");
+    $("app").classList.add("hidden");
+    return;
+  }
+
+  meineUid = user.uid;
+  $("userEmail").textContent = user.email;
+  $("loginPage").classList.add("hidden");
+  $("app").classList.remove("hidden");
+
+  try{
+    await benutzerSicherstellen(user);
+    daten();
+  }catch(e){
+    melde(lesbar(e), true);
+  }
+});
+
+// Legt das Benutzer-Dokument an. Der allererste Benutzer wird Admin.
+async function benutzerSicherstellen(user){
+  await runTransaction(db, async tx => {
+    const metaRef = doc(db, "meta", "app");
+    const userRef = doc(db, "users", user.uid);
+    const meta = await tx.get(metaRef);
+    const eigen = await tx.get(userRef);
+    const ersterUeberhaupt = !meta.exists();
+
+    if(ersterUeberhaupt){
+      tx.set(metaRef, { ersterAdmin: user.uid, erstelltAm: serverTimestamp() });
+    }
+    if(!eigen.exists()){
+      tx.set(userRef, {
+        name: gewuenschterName || (user.email || "").split("@")[0],
+        email: user.email,
+        debt: 0,
+        role: ersterUeberhaupt ? "admin" : "user",
+        createdAt: serverTimestamp()
+      });
+    }
+  });
+}
+
+document.body.addEventListener("click", async ev => {
+  const tun = ev.target.closest("[data-tun]");
+  if(tun) await ausfuehren(tun.getAttribute("data-tun"), ev);
+
+  const seite = ev.target.closest("[data-seite]");
+  if(seite) zeigeSeite(seite.getAttribute("data-seite"));
+
+  const filter = ev.target.closest("[data-filter]");
+  if(filter){ historyFilter = filter.getAttribute("data-filter"); renderHistory(); markiereFilter(); }
+
+  const katKnopf = ev.target.closest("[data-kat]");
+  if(katKnopf){ katFilter = katKnopf.getAttribute("data-kat"); renderDrinks(); markiereFilter(); }
+});
+
+$("password").addEventListener("keydown", e => { if(e.key === "Enter") ausfuehren("login"); });
+$("email").addEventListener("keydown", e => { if(e.key === "Enter") $("password").focus(); });
+["purchaseAmount","paymentMethod"].forEach(id => $(id).addEventListener("input", summeZeigen));
+
+async function ausfuehren(name){
+  try{
+    if(name === "login"){
+      await signInWithEmailAndPassword(auth, $("email").value.trim(), $("password").value);
+    }
+    else if(name === "registrieren"){
+      gewuenschterName = $("displayName").value.trim();
+      if(!gewuenschterName){ $("loginMessage").textContent = "Trag oben deinen Namen ein."; return; }
+      await createUserWithEmailAndPassword(auth, $("email").value.trim(), $("password").value);
+    }
+    else if(name === "passwortVergessen"){
+      const mail = $("email").value.trim();
+      if(!mail){ $("loginMessage").textContent = "Trag zuerst deine E-Mail oben ein."; return; }
+      await sendPasswordResetEmail(auth, mail);
+      $("loginMessage").textContent = "Wir haben dir eine E-Mail zum Zurücksetzen geschickt.";
+    }
+    else if(name === "logout"){ await signOut(auth); }
+    else if(name === "getraenkAnlegen"){ await getraenkAnlegen(); }
+    else if(name === "kaufBestaetigen"){ await kaufBestaetigen(); }
+    else if(name === "modalZu"){ modalZu(); }
+    else if(name === "nameAendern"){ await nameAendern(); }
+  }catch(e){
+    const text = lesbar(e);
+    if(name === "login" || name === "registrieren" || name === "passwortVergessen"){
+      $("loginMessage").textContent = text;
+    }
+    melde(text, true);
+  }
+}
+
+/* ====== Daten ====== */
+function daten(){
+  listener.push(onSnapshot(collection(db, "drinks"), s => {
+    drinks = s.docs.map(d => ({ id: d.id, ...d.data() }));
+    drinks.sort((a,b) => String(a.name).localeCompare(String(b.name), "de"));
+    renderAll();
+  }, e => melde(lesbar(e), true)));
+
+  listener.push(onSnapshot(collection(db, "users"), s => {
+    users = s.docs.map(d => ({ id: d.id, ...d.data() }));
+    ich = users.find(u => u.id === meineUid) || ich;
+    renderAll();
+  }, e => melde(lesbar(e), true)));
+
+  if(istAdmin()){
+    listener.push(onSnapshot(query(collection(db, "sales"), orderBy("createdAt", "desc"), limit(200)), s => {
+      meineKaeufe = s.docs.map(d => ({ id: d.id, ...d.data() }));
+      meineVerkaeufe = [];
+      verkaeufeMischen();
+    }, e => melde(lesbar(e), true)));
+  }else{
+    listener.push(onSnapshot(query(collection(db, "sales"), where("userId", "==", meineUid), limit(200)), s => {
+      meineKaeufe = s.docs.map(d => ({ id: d.id, ...d.data() }));
+      verkaeufeMischen();
+    }, e => melde(lesbar(e), true)));
+
+    listener.push(onSnapshot(query(collection(db, "sales"), where("verkaeufer", "==", meineUid), limit(200)), s => {
+      meineVerkaeufe = s.docs.map(d => ({ id: d.id, ...d.data() }));
+      verkaeufeMischen();
+    }, e => melde(lesbar(e), true)));
+  }
+
+  listener.push(onSnapshot(query(collection(db, "debtPayments"), orderBy("createdAt", "desc"), limit(200)), s => {
+    payments = s.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderAll();
+  }, e => melde(lesbar(e), true)));
+
+}
+
+/* ====== Navigation ====== */
+function zeigeSeite(seite){
+  document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
+  const el = $(seite);
+  if(el) el.classList.add("active");
+  document.querySelectorAll("[data-seite]").forEach(b =>
+    b.classList.toggle("active", b.getAttribute("data-seite") === seite));
+  renderAll();
+}
+
+function markiereFilter(){
+  $("filterAlle").classList.toggle("active", historyFilter === "alle");
+  $("filterMeine").classList.toggle("active", historyFilter === "meine");
+  $("katAlle").classList.toggle("active", katFilter === "alle");
+  $("katDrink").classList.toggle("active", katFilter === "drink");
+  $("katFood").classList.toggle("active", katFilter === "food");
+}
+
+/* ====== Getränke ====== */
+function renderDrinks(){
+  const sichtbar = katFilter === "alle" ? drinks : drinks.filter(d => kat(d) === katFilter);
+  const html = sichtbar.map(d => {
+    const bestand = Number(d.stock || 0);
+    const min = Number(d.minStock || 0);
+    const klasse = bestand === 0 ? "empty" : (bestand <= min ? "low" : "");
+    const meins = d.besitzer && d.besitzer === meineUid;
+    const tasten = [];
+    if(meins){
+      tasten.push(`<button class="ghost" data-nachfuellen="${d.id}">+ Bestand</button>`);
+      tasten.push(`<button class="ghost" data-preis="${d.id}">Preis</button>`);
+    }
+    if(istAdmin() && bestand > 0) tasten.push(`<button class="ghost" data-schenken="${d.id}">🎁 Schenken</button>`);
+    if(meins || istAdmin()) tasten.push(`<button class="ghost" data-loeschen="${d.id}">Löschen</button>`);
+    const adminTasten = tasten.length
+      ? `<div style="display:flex;gap:6px;flex-wrap:wrap">${tasten.join("")}</div>` : "";
+    return `
+      <div class="card drink-card">
+        <div class="drink-icon">${esc(d.icon || (kat(d) === "food" ? "🍫" : "🥤"))}</div>
+        <div class="drink-name">${esc(d.name)}<span class="badge">${katName(kat(d))}</span></div>
+        <div class="price">${chf(d.price)}</div>
+        <div class="stock ${klasse}">Bestand: ${bestand}${bestand <= min && bestand > 0 ? " · fast leer" : ""}</div>
+        <div class="stock">von ${esc(d.besitzerName || "unbekannt")}${meins ? " (dir)" : ""}</div>
+        ${gesperrt(ich)
+          ? `<button disabled>🔒 Erst Schulden zahlen</button>`
+          : (bestand > 0
+            ? `<button class="primary" data-kaufen="${d.id}">🛒 Nehmen</button>`
+            : `<button disabled>❌ Ausverkauft</button>`)}
+        ${adminTasten}
+      </div>`;
+  }).join("");
+
+  const inhalt = html || `<p class="muted">Hier ist gerade nichts. ${istAdmin()
+    ? "Leg unter Verwaltung etwas an." : "Ein Admin muss zuerst etwas anlegen."}</p>`;
+  $("drinkList").innerHTML = inhalt;
+  $("homeDrinks").innerHTML = drinks.length ? inhalt : inhalt;
+
+  const knapp = drinks.filter(d => Number(d.stock || 0) <= Number(d.minStock || 0));
+  $("nachfuellen").innerHTML = knapp.length
+    ? `<div class="warn">⚠️ Nachfüllen: ${knapp.map(d =>
+        esc(d.name) + " (" + Number(d.stock || 0) + ")").join(", ")}</div>`
+    : "";
+}
+
+document.body.addEventListener("click", async ev => {
+  const kaufen = ev.target.closest("[data-kaufen]");
+  if(kaufen) kaufOeffnen(kaufen.getAttribute("data-kaufen"), false);
+
+  const schenken = ev.target.closest("[data-schenken]");
+  if(schenken) kaufOeffnen(schenken.getAttribute("data-schenken"), true);
+
+  const nach = ev.target.closest("[data-nachfuellen]");
+  if(nach) await bestandAendern(nach.getAttribute("data-nachfuellen"));
+
+  const preis = ev.target.closest("[data-preis]");
+  if(preis) await preisAendern(preis.getAttribute("data-preis"));
+
+  const weg = ev.target.closest("[data-loeschen]");
+  if(weg) await getraenkLoeschen(weg.getAttribute("data-loeschen"));
+
+  const zahlen = ev.target.closest("[data-zahlen]");
+  if(zahlen) await schuldZahlen(zahlen.getAttribute("data-zahlen"));
+
+  const storno = ev.target.closest("[data-storno]");
+  if(storno) await stornieren(storno.getAttribute("data-storno"));
+
+  const ok = ev.target.closest("[data-bestaetigen]");
+  if(ok) await zahlungBestaetigen(ok.getAttribute("data-bestaetigen"));
+
+  const nein = ev.target.closest("[data-ablehnen]");
+  if(nein) await zahlungAblehnen(nein.getAttribute("data-ablehnen"));
+
+  const rolle = ev.target.closest("[data-rolle]");
+  if(rolle) await rolleWechseln(rolle.getAttribute("data-rolle"));
+});
+
+async function bestandAendern(id){
+  const d = drinks.find(x => x.id === id);
+  if(!d) return;
+  if(d.besitzer !== meineUid){ melde("Das darf nur ändern, wer es eingetragen hat.", true); return; }
+  const eingabe = window.prompt(`Wie viele ${d.name} kommen dazu? (Minus geht auch)`, "10");
+  if(eingabe === null) return;
+  const menge = parseInt(eingabe, 10);
+  if(isNaN(menge) || menge === 0){ melde("Gib eine Zahl ungleich null ein.", true); return; }
+  const neu = Number(d.stock || 0) + menge;
+  if(neu < 0){ melde("So viele sind gar nicht da.", true); return; }
+  try{
+    await updateDoc(doc(db, "drinks", id), { stock: neu });
+    melde(`${d.name}: Bestand jetzt ${neu}.`);
+  }catch(e){ melde(lesbar(e), true); }
+}
+
+async function preisAendern(id){
+  const d = drinks.find(x => x.id === id);
+  if(!d) return;
+  if(d.besitzer !== meineUid){ melde("Den Preis darf nur setzen, wer das Produkt eingetragen hat.", true); return; }
+  const eingabe = window.prompt(`Neuer Preis für ${d.name} in CHF:`, Number(d.price || 0).toFixed(2));
+  if(eingabe === null) return;
+  const preis = Number(String(eingabe).replace(",", "."));
+  if(isNaN(preis) || preis <= 0){ melde("Der Preis muss grösser als null sein.", true); return; }
+  try{
+    await updateDoc(doc(db, "drinks", id), { price: preis });
+    melde(`${d.name} kostet jetzt ${chf(preis)}.`);
+  }catch(e){ melde(lesbar(e), true); }
+}
+
+async function getraenkLoeschen(id){
+  const d = drinks.find(x => x.id === id);
+  if(!d) return;
+  if(d.besitzer !== meineUid && !istAdmin()){ melde("Löschen darf nur der Besitzer oder ein Admin.", true); return; }
+  if(!window.confirm(`${d.name} wirklich löschen? Die alten Verkäufe bleiben in der Liste.`)) return;
+  try{
+    await deleteDoc(doc(db, "drinks", id));
+    melde(`${d.name} gelöscht.`);
+  }catch(e){ melde(lesbar(e), true); }
+}
+
+async function getraenkAnlegen(){
+  const kategorie = $("newDrinkKat").value === "food" ? "food" : "drink";
+  const name = $("newDrinkName").value.trim();
+  const icon = $("newDrinkIcon").value.trim() || (kategorie === "food" ? "🍫" : "🥤");
+  const price = Number(String($("newDrinkPrice").value).replace(",", "."));
+  const stock = parseInt($("newDrinkStock").value, 10);
+  const minStock = parseInt($("newDrinkMin").value, 10);
+
+  if(!name){ melde("Gib einen Namen ein.", true); return; }
+  if(isNaN(price) || price <= 0){ melde("Der Preis muss grösser als null sein.", true); return; }
+  if(isNaN(stock) || stock < 0){ melde("Der Bestand muss null oder mehr sein.", true); return; }
+  if(isNaN(minStock) || minStock < 0){ melde("Der Mindestbestand muss null oder mehr sein.", true); return; }
+  if(drinks.some(d => String(d.name).toLowerCase() === name.toLowerCase())){
+    melde("Ein Getränk mit dem Namen gibt es schon.", true); return;
+  }
+
+  await addDoc(collection(db, "drinks"), {
+    name, icon, price, stock, minStock, kategorie,
+    besitzer: meineUid,
+    besitzerName: (ich && (ich.name || ich.email)) || "",
+    createdAt: serverTimestamp()
+  });
+  ["newDrinkName","newDrinkIcon","newDrinkPrice","newDrinkStock","newDrinkMin"].forEach(id => $(id).value = "");
+  melde(`${name} hinzugefügt.`);
+}
+
+/* ====== Kauf ====== */
+function kaufOeffnen(id, alsGeschenk){
+  gewaehltesGetraenk = drinks.find(d => d.id === id);
+  if(!gewaehltesGetraenk) return;
+  geschenkModus = !!alsGeschenk && istAdmin();
+
+  $("giftBox").hidden = !geschenkModus;
+  $("paymentBox").hidden = geschenkModus;
+  if(geschenkModus){
+    $("giftUser").innerHTML = users
+      .map(u => `<option value="${esc(u.id)}">${esc(u.name || u.email)}</option>`).join("");
+  }
+
+  $("modalDrinkName").textContent =
+    (gewaehltesGetraenk.icon || (kat(gewaehltesGetraenk) === "food" ? "🍫" : "🥤")) + " " + gewaehltesGetraenk.name;
+  $("modalDrinkPrice").textContent = "Preis: " + chf(gewaehltesGetraenk.price) +
+    " · noch " + Number(gewaehltesGetraenk.stock || 0) + " da";
+
+  $("purchaseAmount").value = 1;
+  $("purchaseAmount").max = Number(gewaehltesGetraenk.stock || 1);
+
+  $("purchaseUserHint").textContent = geschenkModus
+    ? "Geschenk: kostet nichts und macht keine Schulden."
+    : "Wird auf dich gebucht: " + ((ich && (ich.name || ich.email)) || "");
+
+  summeZeigen();
+  $("purchaseModal").classList.add("active");
+}
+
+function summeZeigen(){
+  if(!gewaehltesGetraenk) return;
+  const menge = Math.max(1, parseInt($("purchaseAmount").value, 10) || 1);
+  if(geschenkModus){
+    $("modalTotal").textContent = "Gesamt: gratis 🎁";
+    $("modalHinweis").textContent = "";
+    return;
+  }
+  $("modalTotal").textContent = "Gesamt: " + chf(Number(gewaehltesGetraenk.price) * menge);
+  const art = $("paymentMethod").value;
+  $("modalHinweis").textContent = (art === "twint" || art === "cash")
+    ? "Du bekommst es erst, wenn der Verkäufer die Zahlung bestätigt hat."
+    : "";
+}
+
+function modalZu(){
+  $("purchaseModal").classList.remove("active");
+  gewaehltesGetraenk = null;
+  geschenkModus = false;
+}
+
+async function kaufBestaetigen(){
+  if(!gewaehltesGetraenk) return;
+  if(geschenkModus && !istAdmin()){ melde("Verschenken darf nur ein Admin.", true); return; }
+  const userId = geschenkModus ? $("giftUser").value : meineUid;
+  const payment = geschenkModus ? "gift" : $("paymentMethod").value;
+  const menge = parseInt($("purchaseAmount").value, 10);
+
+  if(!userId){ melde(geschenkModus ? "Wähle eine Person." : "Du bist nicht angemeldet.", true); return; }
+  if(isNaN(menge) || menge < 1){ melde("Die Anzahl muss mindestens 1 sein.", true); return; }
+  if(!geschenkModus && gesperrt(ich)){
+    melde("Die Schuld ist seit über " + FRIST_TAGE + " Tagen offen. Erst bezahlen, dann wieder kaufen.", true);
+    return;
+  }
+
+  const drinkRef = doc(db, "drinks", gewaehltesGetraenk.id);
+  const userRef = doc(db, "users", userId);
+  const drinkId = gewaehltesGetraenk.id;
+
+  try{
+    await runTransaction(db, async tx => {
+      const drinkSnap = await tx.get(drinkRef);
+      const userSnap = await tx.get(userRef);
+      if(!drinkSnap.exists()) throw new Error("Diesen Artikel gibt es nicht mehr.");
+      if(!userSnap.exists()) throw new Error("Diese Person gibt es nicht mehr.");
+
+      const drink = drinkSnap.data();
+      const user = userSnap.data();
+      if(Number(drink.stock || 0) < menge){
+        throw new Error("Es sind nur noch " + Number(drink.stock || 0) + " da.");
+      }
+
+      const betrag = payment === "gift" ? 0 : runde(Number(drink.price) * menge);
+
+      // Frist frisch aus der Datenbank prüfen
+      const alteSchuld = Number(user.debt || 0);
+      const seit = Number(user.debtSince || 0);
+      if(payment !== "gift" && alteSchuld > 0.001 && seit > 0 && Date.now() - seit > FRIST_MS){
+        throw new Error("Die Schuld ist seit über " + FRIST_TAGE + " Tagen offen. Erst bezahlen.");
+      }
+
+      tx.update(drinkRef, { stock: Number(drink.stock) - menge });
+      if(payment === "debt"){
+        tx.update(userRef, {
+          debt: alteSchuld + betrag,
+          debtSince: (alteSchuld > 0.001 && seit > 0) ? seit : Date.now()
+        });
+      }
+
+      tx.set(doc(collection(db, "sales")), {
+        userId,
+        userName: user.name || user.email,
+        drinkId,
+        drinkName: drink.name,
+        drinkIcon: drink.icon || "🥤",
+        kategorie: drink.kategorie || "drink",
+        verkaeufer: drink.besitzer || null,
+        verkaeuferName: drink.besitzerName || "",
+        status: (payment === "twint" || payment === "cash") ? "offen" : "bestaetigt",
+        geschenktVon: payment === "gift" ? meineUid : null,
+        menge,
+        price: Number(drink.price),
+        betrag,
+        payment,
+        storniert: false,
+        erfasstVon: meineUid,
+        createdAt: serverTimestamp()
+      });
+    });
+
+    const nameFuerMeldung = gewaehltesGetraenk.name;
+    modalZu();
+    melde(payment === "gift"
+      ? "Verschenkt: " + menge + "× " + nameFuerMeldung + " 🎁"
+      : (payment === "debt"
+        ? "Gebucht: " + menge + "× " + nameFuerMeldung
+        : menge + "× " + nameFuerMeldung + " reserviert. Der Verkäufer muss die Zahlung noch bestätigen."));
+  }catch(e){
+    melde(lesbar(e), true);
+  }
+}
+
+/* ====== Name ====== */
+async function nameAendern(){
+  const alt = (ich && (ich.name || ich.email)) || "";
+  const eingabe = window.prompt("Wie sollen dich die anderen sehen?", alt);
+  if(eingabe === null) return;
+  const neu = eingabe.trim();
+  if(!neu){ melde("Der Name darf nicht leer sein.", true); return; }
+  if(neu.length > 30){ melde("Höchstens 30 Zeichen.", true); return; }
+
+  try{
+    await updateDoc(doc(db, "users", meineUid), { name: neu });
+    // eigene Produkte mitziehen, damit dort nicht der alte Name steht
+    const eigene = drinks.filter(d => d.besitzer === meineUid);
+    for(const d of eigene){
+      await updateDoc(doc(db, "drinks", d.id), { besitzerName: neu });
+    }
+    melde("Du heisst jetzt " + neu + ".");
+  }catch(e){ melde(lesbar(e), true); }
+}
+
+/* ====== Twint bestätigen ====== */
+const darfBestaetigen = v => istAdmin() || (v.verkaeufer && v.verkaeufer === meineUid);
+const istOffen = v => v.status === "offen";
+
+async function zahlungBestaetigen(id){
+  const v = sales.find(x => x.id === id);
+  if(!v || !istOffen(v)) return;
+  if(!darfBestaetigen(v)){ melde("Das darf nur der Verkäufer bestätigen.", true); return; }
+  try{
+    await updateDoc(doc(db, "sales", id), {
+      status: "bestaetigt", bestaetigtVon: meineUid, bestaetigtAm: serverTimestamp()
+    });
+    melde("Zahlung bestätigt.");
+  }catch(e){ melde(lesbar(e), true); }
+}
+
+async function zahlungAblehnen(id){
+  const v = sales.find(x => x.id === id);
+  if(!v || !istOffen(v)) return;
+  if(!darfBestaetigen(v)){ melde("Das darf nur der Verkäufer ablehnen.", true); return; }
+  if(!window.confirm(`Zahlung von ${v.userName} über ${chf(v.betrag)} ablehnen? Der Bestand kommt zurück.`)) return;
+
+  const saleRef = doc(db, "sales", id);
+  const drinkRef = doc(db, "drinks", v.drinkId);
+  try{
+    await runTransaction(db, async tx => {
+      const saleSnap = await tx.get(saleRef);
+      const drinkSnap = await tx.get(drinkRef);
+      if(!saleSnap.exists() || saleSnap.data().status !== "offen") throw new Error("Schon erledigt.");
+      if(drinkSnap.exists()){
+        tx.update(drinkRef, { stock: Number(drinkSnap.data().stock || 0) + Number(saleSnap.data().menge || 1) });
+      }
+      tx.update(saleRef, { status: "abgelehnt", storniert: true, abgelehntVon: meineUid, abgelehntAm: serverTimestamp() });
+    });
+    melde("Abgelehnt, Bestand ist zurück.");
+  }catch(e){ melde(lesbar(e), true); }
+}
+
+function renderOffene(){
+  const behaelter = $("offeneListe");
+  const offen = sales.filter(v => istOffen(v));
+  const meine = offen.filter(v => darfBestaetigen(v));
+  const eigene = offen.filter(v => v.userId === meineUid && !darfBestaetigen(v));
+
+  let html = "";
+  if(meine.length){
+    html += `<div class="card" style="margin-bottom:18px">
+      <h3 style="margin-bottom:10px">⏳ Zahlungen bestätigen (${meine.length})</h3>` +
+      meine.map(v => `
+        <div class="row">
+          <div>
+            <strong>${esc(v.userName)}</strong> · ${Number(v.menge || 1)}× ${esc(v.drinkName)}
+            <br><span class="muted">${chf(v.betrag)} ${v.payment === "cash" ? "bar" : "per Twint"}</span>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="success" data-bestaetigen="${esc(v.id)}">✅ Erhalten</button>
+            <button class="ghost" data-ablehnen="${esc(v.id)}">❌ Ablehnen</button>
+          </div>
+        </div>`).join("") + `</div>`;
+  }
+  if(eigene.length){
+    html += `<div class="warn">⏳ ${eigene.length} deiner Twint-Zahlungen ${
+      eigene.length === 1 ? "wartet" : "warten"} noch auf die Bestätigung des Verkäufers.</div>`;
+  }
+  behaelter.innerHTML = html;
+}
+
+/* ====== Storno ====== */
+async function stornieren(saleId){
+  const sale = sales.find(s => s.id === saleId);
+  if(!sale || sale.storniert) return;
+  if(!window.confirm(`Buchung von ${sale.userName} über ${chf(sale.betrag ?? sale.price)} rückgängig machen?`)) return;
+
+  const saleRef = doc(db, "sales", saleId);
+  const drinkRef = doc(db, "drinks", sale.drinkId);
+  const userRef = doc(db, "users", sale.userId);
+
+  try{
+    await runTransaction(db, async tx => {
+      const saleSnap = await tx.get(saleRef);
+      const drinkSnap = await tx.get(drinkRef);
+      const userSnap = await tx.get(userRef);
+      if(!saleSnap.exists() || saleSnap.data().storniert) throw new Error("Schon storniert.");
+
+      const s = saleSnap.data();
+      const menge = Number(s.menge || 1);
+      const betrag = Number(s.betrag ?? (Number(s.price) * menge));
+
+      if(drinkSnap.exists()){
+        tx.update(drinkRef, { stock: Number(drinkSnap.data().stock || 0) + menge });
+      }
+      if(s.payment === "debt" && userSnap.exists()){
+        const neu = Math.max(0, Number(userSnap.data().debt || 0) - betrag);
+        tx.update(userRef, neu <= 0.001 ? { debt: 0, debtSince: 0 } : { debt: neu });
+      }
+      tx.update(saleRef, { storniert: true, storniertVon: meineUid, storniertAm: serverTimestamp() });
+    });
+    melde("Buchung storniert.");
+  }catch(e){ melde(lesbar(e), true); }
+}
+
+/* ====== Schulden ====== */
+function renderDebts(){
+  const behaelter = $("debtList");
+  const schuldner = users.filter(u => Number(u.debt || 0) > 0.001);
+
+  if(!schuldner.length){
+    behaelter.innerHTML = `<h3>🎉 Keine offenen Schulden</h3>`;
+    return;
+  }
+
+  behaelter.innerHTML = schuldner.map(u => `
+    <div class="row">
+      <div>
+        <strong>👤 ${esc(u.name || u.email)}</strong>${u.id === meineUid ? '<span class="badge">du</span>' : ""}
+        <br><span class="${gesperrt(u) ? "red" : "muted"}">${
+          gesperrt(u) ? "🔒 gesperrt, kann nichts kaufen" : "Offener Betrag"}</span>
+      </div>
+      <div style="text-align:right">
+        <strong class="red">${chf(u.debt)}</strong>
+        <br><span class="muted" style="font-size:13px">${esc(fristText(u))}</span>
+        ${istAdmin() ? `<br><button class="success" data-zahlen="${esc(u.id)}" style="margin-top:8px">💰 Zahlung</button>` : ""}
+      </div>
+    </div>`).join("");
+}
+
+async function schuldZahlen(userId){
+  const u = users.find(x => x.id === userId);
+  if(!u) return;
+  const offen = Number(u.debt || 0);
+  const eingabe = window.prompt(
+    `Wie viel zahlt ${u.name || u.email}? Offen sind ${chf(offen)}.`, offen.toFixed(2));
+  if(eingabe === null) return;
+
+  const betrag = Number(String(eingabe).replace(",", "."));
+  if(isNaN(betrag) || betrag <= 0){ melde("Gib einen Betrag grösser als null ein.", true); return; }
+  if(betrag > offen + 0.001){ melde("Das ist mehr als die offene Schuld.", true); return; }
+
+  const userRef = doc(db, "users", userId);
+  try{
+    await runTransaction(db, async tx => {
+      const snap = await tx.get(userRef);
+      if(!snap.exists()) throw new Error("Diese Person gibt es nicht mehr.");
+      const rest = Math.max(0, Number(snap.data().debt || 0) - betrag);
+      tx.update(userRef, rest <= 0.001
+        ? { debt: 0, debtSince: 0 }
+        : { debt: rest });
+      tx.set(doc(collection(db, "debtPayments")), {
+        userId,
+        userName: u.name || u.email,
+        amount: betrag,
+        erfasstVon: meineUid,
+        createdAt: serverTimestamp()
+      });
+    });
+    melde(`${chf(betrag)} verbucht.`);
+  }catch(e){ melde(lesbar(e), true); }
+}
+
+/* ====== Verkäufe ====== */
+function renderHistory(){
+  const tabelle = $("historyTable");
+  const liste = historyFilter === "meine" ? sales.filter(s => s.userId === meineUid) : sales;
+
+  if(!liste.length){
+    tabelle.innerHTML = `<tr><td colspan="6" class="muted">Noch keine Buchungen.</td></tr>`;
+    return;
+  }
+
+  const zahlungText = { twint: "💚 Twint", cash: "💵 Bar", debt: "📒 Schuld", gift: "🎁 Geschenk" };
+
+  tabelle.innerHTML = liste.map(s => {
+    const datum = s.createdAt && s.createdAt.toDate
+      ? s.createdAt.toDate().toLocaleString("de-CH", { day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit" })
+      : "…";
+    const menge = Number(s.menge || 1);
+    const betrag = Number(s.betrag ?? (Number(s.price || 0) * menge));
+    const darfStorno = !s.storniert && s.status !== "offen" &&
+      (istAdmin() || (s.payment !== "debt" && s.verkaeufer === meineUid));
+    const knopf = darfStorno ? `<button class="ghost" data-storno="${esc(s.id)}">Storno</button>` : "";
+    const status = s.status === "offen" ? ' <span class="badge">⏳ wartet</span>'
+                 : s.status === "abgelehnt" ? ' <span class="badge">❌ abgelehnt</span>' : "";
+    return `
+      <tr class="${s.storniert ? "storniert" : ""}">
+        <td>${datum}${status}</td>
+        <td>${esc(s.userName)}${s.userId === meineUid ? " (du)" : ""}</td>
+        <td>${menge > 1 ? menge + "× " : ""}${esc(s.drinkName)}</td>
+        <td>${chf(betrag)}</td>
+        <td>${zahlungText[s.payment] || esc(s.payment)}</td>
+        <td>${knopf}</td>
+      </tr>`;
+  }).join("");
+}
+
+/* ====== Benutzer ====== */
+function renderUsers(){
+  $("userList").innerHTML = users.map(u => `
+    <div class="row">
+      <div>
+        <strong>👤 ${esc(u.name || u.email)}</strong>
+        ${u.role === "admin" ? '<span class="badge admin">Admin</span>' : ""}
+        ${u.id === meineUid ? '<span class="badge">du</span>' : ""}
+        <br><span class="muted">${esc(u.email || "")}</span>
+      </div>
+      <div style="text-align:right">
+        ${Number(u.debt || 0) > 0.001
+          ? `<span class="red">${chf(u.debt)}</span>`
+          : `<span class="green">keine Schulden</span>`}
+        ${istAdmin() && u.id !== meineUid
+          ? `<br><button class="ghost" data-rolle="${esc(u.id)}" style="margin-top:8px">${
+              u.role === "admin" ? "Admin entziehen" : "Zum Admin machen"}</button>`
+          : ""}
+      </div>
+    </div>`).join("") || `<p class="muted">Noch keine Benutzer.</p>`;
+}
+
+async function rolleWechseln(userId){
+  const u = users.find(x => x.id === userId);
+  if(!u) return;
+  const neu = u.role === "admin" ? "user" : "admin";
+  if(!window.confirm(`${u.name || u.email} ${neu === "admin" ? "zum Admin machen" : "die Adminrechte entziehen"}?`)) return;
+  try{
+    await updateDoc(doc(db, "users", userId), { role: neu });
+    melde("Rolle geändert.");
+  }catch(e){ melde(lesbar(e), true); }
+}
+
+/* ====== Zahlen ====== */
+function updateStats(){
+  const bestand = drinks.reduce((s, d) => s + Number(d.stock || 0), 0);
+
+  const sofortBezahlt = sales
+    .filter(s => !s.storniert && s.status !== "offen" && s.status !== "abgelehnt" && s.payment !== "debt")
+    .reduce((s, v) => s + Number(v.betrag ?? (Number(v.price || 0) * Number(v.menge || 1))), 0);
+  const schuldenBezahlt = payments.reduce((s, p) => s + Number(p.amount || 0), 0);
+
+  const schulden = users.reduce((s, u) => s + Number(u.debt || 0), 0);
+
+  $("totalStock").textContent = bestand;
+  $("totalIncome").textContent = chf(sofortBezahlt + schuldenBezahlt);
+  $("totalDebt").textContent = chf(schulden);
+  if(ich) $("userEmail").textContent = (ich.name || ich.email) + " · " + (ich.email || "");
+  $("myDebt").textContent = chf(ich ? ich.debt : 0);
+  $("myDebt").className = "stat-number " + (hatSchuld(ich) ? "red" : "green");
+  $("myDebtHint").textContent = hatSchuld(ich) ? fristText(ich) : "";
+
+  $("sperrBanner").innerHTML = gesperrt(ich)
+    ? `<div class="sperre">🔒 Deine Schuld von ${chf(ich.debt)} ist seit über ${FRIST_TAGE} Tagen offen.
+       Bis sie bezahlt ist, kannst du nichts mehr nehmen. Melde dich bei einem Admin.</div>`
+    : "";
+}
+
+/* ====== Alles ====== */
+function renderAll(){
+  $("navAdmin").hidden = !istAdmin();
+  if(!istAdmin() && $("admin").classList.contains("active")){
+    $("admin").classList.remove("active");
+    $("home").classList.add("active");
+    document.querySelectorAll("[data-seite]").forEach(b =>
+      b.classList.toggle("active", b.getAttribute("data-seite") === "home"));
+  }
+  renderDrinks();
+  renderOffene();
+  renderDebts();
+  renderHistory();
+  renderUsers();
+  updateStats();
+  markiereFilter();
+}
+
+zeigeSeite("home");
+setInterval(() => { if(ich) renderAll(); }, 60000);
+</script>
+</body>
+</html>
